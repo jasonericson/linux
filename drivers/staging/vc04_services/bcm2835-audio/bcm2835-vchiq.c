@@ -241,7 +241,7 @@ static void audio_vchi_callback_gencmd(void *param,
 				       const VCHI_CALLBACK_REASON_T reason,
 				       void *msg_handle)
 {
-	AUDIO_INSTANCE_T *instance = (AUDIO_INSTANCE_T *) param;
+	bcm2835_audio_instance *instance = (bcm2835_audio_instance *) param;
 	int32_t status;
 	int32_t msg_len;
 	char response_buffer[GENCMDSERVICE_MSGFIFO_SIZE];
