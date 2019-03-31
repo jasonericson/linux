@@ -513,6 +513,9 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 	struct bcm2835_audio_instance *instance = alsa_stream->instance;
 	int status;
 	int ret;
+	unsigned int value;
+	int i;
+	char cmd[80];
 
 	LOG_INFO(" Setting ALSA dest(%d), volume(%d)\n",
 		 chip->dest, chip->volume);
@@ -542,7 +545,7 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 			__func__, status);
 
 		ret = -1;
-		goto unlock;
+		goto release0;
 	}
 
 	/* We are expecting a reply from the videocore */
@@ -552,13 +555,67 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 		LOG_ERR("%s: result=%d\n", __func__, instance->result);
 
 		ret = -1;
-		goto unlock;
+		goto release0;
 	}
 
-	ret = 0;
-
-unlock:
 	vchi_service_release(instance->vchi_handle[0]);
+
+	vchi_service_use(instance->vchi_handle[1]);
+
+	instance->result = -1;
+
+	/* Create the message available completion */
+	init_completion(&instance->msg_avail_comp);
+
+	/* ... */
+	if (chip->cea_chmap >= 0) {
+		value = (unsigned)chip->cea_chmap << 24;
+	} else {
+		value = 0; /* force stereo */
+		for (i = 0; i < 8; i++)
+			chip->map_channels[i] = i;
+	}
+	for (i = 0; i < 8; i++)
+		value |= chip->map_channels[i] << (i * 3);
+	snprintf(cmd, sizeof(cmd), "hdmi_channel_map 0x%08x", value);
+
+	LOG_DBG("run vc command: %s\n", cmd);
+
+	/* Send the message to the videocore */
+	success = vchi_msg_queue(instance->vchi_handle[1],
+				 cmd, strlen(cmd) + 1,
+				 VCHI_FLAGS_BLOCK_UNTIL_QUEUED, NULL);
+	if (success != 0) {
+		LOG_ERR("%s: failed on vchi_msg_queue (status=%d)\n",
+			__func__, success);
+
+		ret = -1;
+		goto release1;
+	}
+
+	/* We are expecting a reply from the videocore */
+	ret = wait_for_completion_interruptible(&instance->msg_avail_comp);
+	if (ret) {
+		LOG_DBG("%s: failed on waiting for event (status=%d)\n",
+			__func__, success);
+		goto release1;
+	}
+
+	if (instance->result != 0) {
+		LOG_ERR("%s: result=%d\n", __func__, instance->result);
+
+		ret = -1;
+		goto release1;
+
+	ret = 0;
+	goto release1;
+
+release0:
+	vchi_service_release(instance->vchi_handle[0]);
+	goto unlock;
+release1:
+	vchi_service_release(instance->vchi_handle[1]);
+unlock:
 	mutex_unlock(&instance->vchi_mutex);
 
 	return ret;
