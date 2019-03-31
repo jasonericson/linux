@@ -457,7 +457,7 @@ static int snd_bcm2835_chmap_ctl_get(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
-	bcm2835_chip_t *chip = info->private_data;
+	struct bcm2835_chip *chip = info->private_data;
 	unsigned int idx = snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
 	struct snd_pcm_substream *substream = snd_pcm_chmap_substream(info, idx);
 	struct cea_channel_speaker_allocation *ch = NULL;
@@ -490,7 +490,7 @@ static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
 				     struct snd_ctl_elem_value *ucontrol)
 {
 	struct snd_pcm_chmap *info = snd_kcontrol_chip(kcontrol);
-	bcm2835_chip_t *chip = info->private_data;
+	struct bcm2835_chip *chip = info->private_data;
 	unsigned int idx = snd_ctl_get_ioffidx(kcontrol, &ucontrol->id);
 	struct snd_pcm_substream *substream = snd_pcm_chmap_substream(info, idx);
 	int i, prepared = 0, cea_chmap = -1;
@@ -560,7 +560,7 @@ static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int snd_bcm2835_add_chmap_ctl(bcm2835_chip_t * chip)
+static int snd_bcm2835_add_chmap_ctl(struct bcm2835_chip * chip)
 {
 	struct snd_pcm_chmap *chmap;
 	struct snd_kcontrol *kctl;

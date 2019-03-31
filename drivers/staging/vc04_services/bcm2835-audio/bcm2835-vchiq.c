@@ -582,12 +582,11 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 	LOG_DBG("run vc command: %s\n", cmd);
 
 	/* Send the message to the videocore */
-	success = vchi_msg_queue(instance->vchi_handle[1],
-				 cmd, strlen(cmd) + 1,
-				 VCHI_FLAGS_BLOCK_UNTIL_QUEUED, NULL);
-	if (success != 0) {
+	status = bcm2835_vchi_msg_queue(instance->vchi_handle[1],
+				 cmd, strlen(cmd) + 1);
+	if (status != 0) {
 		LOG_ERR("%s: failed on vchi_msg_queue (status=%d)\n",
-			__func__, success);
+			__func__, status);
 
 		ret = -1;
 		goto release1;
@@ -597,7 +596,7 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 	ret = wait_for_completion_interruptible(&instance->msg_avail_comp);
 	if (ret) {
 		LOG_DBG("%s: failed on waiting for event (status=%d)\n",
-			__func__, success);
+			__func__, status);
 		goto release1;
 	}
 
@@ -606,6 +605,7 @@ static int bcm2835_audio_set_ctls_chan(struct bcm2835_alsa_stream *alsa_stream,
 
 		ret = -1;
 		goto release1;
+	}
 
 	ret = 0;
 	goto release1;
