@@ -5,7 +5,7 @@
 #define _VC_AUDIO_DEFS_H_
 
 #define VC_AUDIOSERV_MIN_VER 1
-#define VC_AUDIOSERV_VER 2
+#define VC_AUDIOSERV_VER 3
 
 /* FourCC code used for VCHI connection */
 #define VC_AUDIO_SERVER_NAME  MAKE_FOURCC("AUDS")
@@ -25,6 +25,7 @@ enum vc_audio_msg_type {
 	VC_AUDIO_MSG_TYPE_START, // Configure audio
 	VC_AUDIO_MSG_TYPE_STOP, // Configure audio
 	VC_AUDIO_MSG_TYPE_WRITE, // Configure audio
+	VC_AUDIO_MSG_TYPE_LATENCY,
 	VC_AUDIO_MSG_TYPE_MAX
 };
 
@@ -34,6 +35,7 @@ struct vc_audio_config {
 	u32 channels;
 	u32 samplerate;
 	u32 bps;
+	u32 channelmap;
 };
 
 struct vc_audio_control {
@@ -66,6 +68,11 @@ struct vc_audio_write {
 	s16 max_packet;
 };
 
+/* query latency in samples of sink */
+struct vc_audio_latency {
+	u32 dummy;
+};
+
 /* Generic result for a request (VC->HOST) */
 struct vc_audio_result {
 	s32 success; // Success value
@@ -89,6 +96,7 @@ struct vc_audio_msg {
 		struct vc_audio_start start;
 		struct vc_audio_stop stop;
 		struct vc_audio_write write;
+		struct vc_audio_latency latency;
 		struct vc_audio_result result;
 		struct vc_audio_complete complete;
 	} u;
