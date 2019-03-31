@@ -43,6 +43,8 @@
 #define LOG_DBG(fmt, arg...)	 no_printk(fmt, ##arg)
 #endif
 
+#define GENCMDSERVICE_MSGFIFO_SIZE 1024
+
 struct bcm2835_audio_instance {
 	unsigned int num_connections;
 	VCHI_SERVICE_HANDLE_T vchi_handle[VCHI_MAX_NUM_CONNECTIONS];
@@ -235,6 +237,39 @@ static void audio_vchi_callback(void *param,
 	}
 }
 
+static void audio_vchi_callback_gencmd(void *param,
+				       const VCHI_CALLBACK_REASON_T reason,
+				       void *msg_handle)
+{
+	AUDIO_INSTANCE_T *instance = (AUDIO_INSTANCE_T *) param;
+	int32_t status;
+	int32_t msg_len;
+	char response_buffer[GENCMDSERVICE_MSGFIFO_SIZE];
+	LOG_DBG(" .. IN instance=%p, handle=%p, alsa=%p, reason=%d, handle=%p\n",
+		instance, instance ? instance->vchi_handle[1] : NULL, instance ? instance->alsa_stream : NULL, reason, msg_handle);
+
+	if (reason != VCHI_CALLBACK_MSG_AVAILABLE) {
+		return;
+	}
+	if (!instance) {
+		LOG_ERR(" .. instance is null\n");
+		BUG();
+		return;
+  }
+  if (!instance->vchi_handle[1]) {
+		LOG_ERR(" .. instance->vchi_handle[0] is null\n");
+		BUG();
+		return;
+  }
+	status = vchi_msg_dequeue(instance->vchi_handle[1],
+				  response_buffer, sizeof response_buffer, &msg_len, VCHI_FLAGS_NONE);
+
+	instance->result = 0;
+	complete(&instance->msg_avail_comp);
+
+	LOG_DBG(" .. OUT\n");
+}
+
 static struct bcm2835_audio_instance *
 vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
 		   VCHI_CONNECTION_T **vchi_connections,
@@ -244,6 +279,7 @@ vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
 	struct bcm2835_audio_instance *instance;
 	int status;
 	int ret;
+	int32_t services[] = {VC_AUDIO_SERVER_NAME, MAKE_FOURCC("GCMD")};
 
 	LOG_DBG("%s: start", __func__);
 
@@ -266,11 +302,11 @@ vc_vchi_audio_init(VCHI_INSTANCE_T vchi_instance,
 	for (i = 0; i < num_connections; i++) {
 		SERVICE_CREATION_T params = {
 			.version		= VCHI_VERSION_EX(VC_AUDIOSERV_VER, VC_AUDIOSERV_MIN_VER),
-			.service_id		= VC_AUDIO_SERVER_NAME,
+			.service_id		= services[i],
 			.connection		= vchi_connections[i],
 			.rx_fifo_size		= 0,
 			.tx_fifo_size		= 0,
-			.callback		= audio_vchi_callback,
+			.callback		= i ? audio_vchi_callback_gencmd : audio_vchi_callback,
 			.callback_param		= instance,
 			.want_unaligned_bulk_rx = 1, //TODO: remove VCOS_FALSE
 			.want_unaligned_bulk_tx = 1, //TODO: remove VCOS_FALSE
@@ -386,6 +422,8 @@ static int bcm2835_audio_open_connection(struct bcm2835_alsa_stream *alsa_stream
 	struct bcm2835_audio_instance *instance =
 		(struct bcm2835_audio_instance *)alsa_stream->instance;
 	struct bcm2835_vchi_ctx *vhci_ctx = alsa_stream->chip->vchi_ctx;
+    static VCHI_CONNECTION_T *vchi_connections[2];
+    vchi_connections[0] = vhci_ctx->vchi_connection;
 
 	LOG_INFO("%s: start\n", __func__);
 	BUG_ON(instance);
@@ -399,7 +437,7 @@ static int bcm2835_audio_open_connection(struct bcm2835_alsa_stream *alsa_stream
 
 	/* Initialize an instance of the audio service */
 	instance = vc_vchi_audio_init(vhci_ctx->vchi_instance,
-				      &vhci_ctx->vchi_connection, 1);
+				      vchi_connections, 2);
 
 	if (IS_ERR(instance)) {
 		LOG_ERR("%s: failed to initialize audio service\n", __func__);
