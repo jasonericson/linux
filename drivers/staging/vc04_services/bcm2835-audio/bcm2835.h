@@ -157,6 +157,8 @@ int snd_bcm2835_new_headphones_ctl(struct bcm2835_chip *chip);
 int bcm2835_new_vchi_ctx(struct bcm2835_vchi_ctx *vchi_ctx);
 void bcm2835_free_vchi_ctx(struct bcm2835_vchi_ctx *vchi_ctx);
 
+int snd_bcm2835_pcm_prepare_again(struct snd_pcm_substream *substream);
+
 int bcm2835_audio_open(struct bcm2835_alsa_stream *alsa_stream);
 int bcm2835_audio_close(struct bcm2835_alsa_stream *alsa_stream);
 int bcm2835_audio_set_params(struct bcm2835_alsa_stream *alsa_stream,

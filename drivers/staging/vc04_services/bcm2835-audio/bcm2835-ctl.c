@@ -556,7 +556,7 @@ static int snd_bcm2835_chmap_ctl_put(struct snd_kcontrol *kcontrol,
 	for (i = 0; i < 8; i++)
 		chip->map_channels[i] = remap[i];
 	if (prepared)
-		bcm2835_audio_set_ctls(chip);
+		snd_bcm2835_pcm_prepare_again(substream);
 	return 0;
 }
 

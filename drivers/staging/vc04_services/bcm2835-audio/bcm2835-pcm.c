@@ -270,8 +270,7 @@ static int snd_bcm2835_pcm_hw_free(struct snd_pcm_substream *substream)
 	return snd_pcm_lib_free_pages(substream);
 }
 
-/* prepare callback */
-static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
+int snd_bcm2835_pcm_prepare_again(struct snd_pcm_substream * substream)
 {
 	struct bcm2835_chip *chip = snd_pcm_substream_chip(substream);
 	struct snd_pcm_runtime *runtime = substream->runtime;
@@ -296,6 +295,18 @@ static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
 		alsa_stream->pcm_format_width);
 	if (err < 0)
 		audio_error(" error setting hw params\n");
+	
+	return err;
+}
+
+/* prepare callback */
+static int snd_bcm2835_pcm_prepare(struct snd_pcm_substream *substream)
+{
+	struct bcm2835_chip *chip = snd_pcm_substream_chip(substream);
+	struct snd_pcm_runtime *runtime = substream->runtime;
+	struct bcm2835_alsa_stream *alsa_stream = runtime->private_data;
+
+	snd_bcm2835_pcm_prepare_again(substream);
 
 	bcm2835_audio_setup(alsa_stream);
 
